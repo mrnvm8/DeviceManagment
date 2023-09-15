@@ -1,0 +1,58 @@
+﻿@inject AuthenticationStateProvider AuthStateProvider
+@using System.Security.Claims
+
+@if (authorized)
+{
+
+    <div class="nav-item px-3">
+        <NavLink class="nav-link" href="office">
+            <span class="oi oi-briefcase" aria-hidden="true"></span> Offices
+        </NavLink>
+    </div>
+
+    <div class="nav-item px-3">
+        <NavLink class="nav-link" href="department">
+            <span class="oi oi-target" aria-hidden="true"></span> Departments
+        </NavLink>
+    </div>
+
+    <div class="nav-item px-3">
+        <NavLink class="nav-link" href="people">
+            <span class="oi oi-person" aria-hidden="true"></span> People
+        </NavLink>
+    </div>
+
+    <div class="nav-item px-3">
+        <NavLink class="nav-link" href="employee">
+            <span class="oi oi-people" aria-hidden="true"></span> Employees
+        </NavLink>
+    </div>
+
+    <div class="nav-item px-3">
+        <NavLink class="nav-link" href="user">
+            <span class="oi oi-key" aria-hidden="true"></span> Users
+        </NavLink>
+    </div>
+
+    <div class="nav-item px-3">
+        <NavLink class="nav-link" href="type">
+            <span class="oi oi-monitor" aria-hidden="true"></span> Device Type
+        </NavLink>
+    </div>
+}
+
+
+@code {
+    bool authorized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        string role = (await AuthStateProvider.GetAuthenticationStateAsync())
+        .User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role).Value;
+
+        if (role.Contains("admin"))
+        {
+            authorized = true;
+        }
+    }
+}

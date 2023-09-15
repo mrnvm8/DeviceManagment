@@ -1,0 +1,100 @@
+﻿@page "/assign/{Id}"
+@attribute [Authorize]
+@inject IDeviceLoanService DeviceLoanService
+@inject IDeviceService DeviceService
+@inject IEmployeeService EmployeeService
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+
+<PageTitle>Assign device</PageTitle>
+<h3 class="page-header">Assign Device</h3>
+
+<div class="flex-row content-detail">
+
+    Department: <span class="info">@device.Department</span>
+    <br />
+     Device 
+    @if (String.IsNullOrEmpty(device.SerialNo))
+    {
+        <span>IMEI Number:</span>
+        <span class="info">@device.IMEINo</span>
+    }
+    else
+    {
+        <span>Serial Number:</span>
+        <span class="info"> @device.SerialNo</span>
+    }
+    <br />
+
+    <div>
+        Device Name : <span class="info">@device.DeviceName</span>
+    </div>
+</div>
+
+<div class="page-content">
+    <div class="form-content">
+
+        <EditForm class="form-detail" Model="deviceLoans" OnSubmit="HandleSubmit">
+            <div class="mb-3">
+                <label for="name">Employee Name</label>
+                <InputSelect id="employeeId" @bind-Value="deviceLoans.EmployeeId" class="form-select">
+                    <option value="0">Select Name</option>
+                    @foreach (var emp in EmployeeService.Employees)
+                    {
+                        <option value="@emp.EmplyeeId">@emp.FullName</option>
+                    }
+                </InputSelect>
+            </div>
+            <button type="submit" class="btn btn-warning mx-5">Assign Device</button>
+            <button type="button" @onclick="Navigate" class="btn btn-primary">Go To Home</button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+
+    [Parameter]
+    public string? Id { get; set; }
+
+    private DeviceLoanResponse deviceLoans = new DeviceLoanResponse();
+    private DeviceResponse device = new DeviceResponse();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await EmployeeService.GetEmployeeList();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var employee = EmployeeService.Employees[0];
+        deviceLoans.EmployeeId = employee.EmplyeeId;
+
+        var result = await DeviceService.GetDeviceById(Id);
+        if (result is not null && result.Data is not null)
+        {
+            device = result.Data;
+            deviceLoans.DeviceId = Id;
+        }
+    }
+
+    private async void HandleSubmit()
+    {
+        var result = await DeviceLoanService.AssignDevice(deviceLoans);
+        if (!result.Success)
+        {
+            ToastService.ShowError(result.Message, settings =>
+                 { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+        }
+        else
+        {
+            ToastService.ShowSuccess(result.Message, settings =>
+                  { settings.IconType = IconType.FontAwesome; });
+            Navigate();
+        }
+    }
+    private void Navigate()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+}

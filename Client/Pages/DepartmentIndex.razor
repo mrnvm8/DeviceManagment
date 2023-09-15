@@ -1,0 +1,73 @@
+﻿@page "/department"
+@attribute [Authorize(Roles = "admin")]
+@inject IDepartmentService DepartmentService
+@inject NavigationManager NavigationManager
+
+
+<h3 class="page-header">Department List</h3>
+@if (_department == null || _department.Count == 0)
+{
+    <div class="container">
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.Center"
+                     Wrap="FlexWrap.Wrap" Class="rz-m-12"
+                     Gap="2rem">
+            <RadzenProgressBarCircular ShowValue="true" Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Large">
+                <Template>Wait</Template>
+            </RadzenProgressBarCircular>
+        </RadzenStack>
+    </div>
+}
+else
+{
+    <a class="btn btn-outline-primary btn-shape mb-3" href="upd-del-person">
+        <i class="oi oi-plus"></i> Add Department
+    </a>
+    <div class="container">
+        <RadzenDataGrid Data="_department" TItem="DepartmentResponse"
+                        AllowFiltering="true"
+                        AllowPaging="true"
+                        AllowColumnResize="true"
+                        ShowPagingSummary="true"
+                        PageSize="6">
+            <Columns>
+                <RadzenDataGridColumn TItem="DepartmentResponse" Property="DepartmentName" Title="Department Name">
+                    <Template Context="_department">
+                        @_department.DepartmentName
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DepartmentResponse" TextAlign="TextAlign.Center" Property="OfficeName" Title="Office Name" />
+                <RadzenDataGridColumn TItem="DepartmentResponse" TextAlign="TextAlign.Center" Property="Location" Title="Location" />
+                <RadzenDataGridColumn TItem="DepartmentResponse" TextAlign="TextAlign.Center" Property="Description" Title="Description" />
+                <RadzenDataGridColumn TItem="DepartmentResponse" Context="_department" Title="Option" TextAlign="TextAlign.Center" Width="100px">
+                    <Template Context="_department">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary"
+                                      Variant="Variant.Flat"
+                                      Size="ButtonSize.Medium"
+                                      Click=@(arg => Edit(_department.DepartId))>
+                        </RadzenButton>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+
+    public List<DepartmentResponse>? _department;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await DepartmentService.GetDepartmentList();
+        _department = DepartmentService.Departments;
+    }
+
+    private void Edit(string departmentId)
+    {
+        NavigationManager.NavigateTo($"upd-del-department/{departmentId}");
+    }
+
+}

@@ -1,0 +1,68 @@
+﻿@page "/office"
+@attribute [Authorize(Roles = "admin")]
+@inject IOfficeService OfficeService
+@inject NavigationManager NavigationManager
+
+<h3 class="page-header">Office List</h3>
+@if (_office == null || _office.Count == 0)
+{
+    <div class="container">
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.Center"
+                     Wrap="FlexWrap.Wrap" Class="rz-m-12"
+                     Gap="2rem">
+            <RadzenProgressBarCircular ShowValue="true" Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Large">
+                <Template>Wait</Template>
+            </RadzenProgressBarCircular>
+        </RadzenStack>
+    </div>
+}
+else
+{
+    <a class="btn btn-outline-primary btn-shape mb-3" href="upd-del-office">
+        <i class="oi oi-plus"></i> Add Office
+    </a>
+    <div class="container">
+        <RadzenDataGrid Data="_office" TItem="OfficeResponse"
+                        AllowFiltering="true"
+                        AllowPaging="true"
+                        AllowColumnResize="true"
+                        ShowPagingSummary="true"
+                        PageSize="6">
+            <Columns>
+                <RadzenDataGridColumn TItem="OfficeResponse" Property="PersonId" Title="Person ID">
+                    <Template Context="_office">
+                        @_office.OfficeId
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="OfficeResponse" TextAlign="TextAlign.Center" Property="Name" Title="Office Name" />
+                <RadzenDataGridColumn TItem="OfficeResponse" TextAlign="TextAlign.Center" Property="Location" Title="Office Location" />
+                <RadzenDataGridColumn TItem="OfficeResponse" Context="_office" Title="Option" TextAlign="TextAlign.Center" Width="100px">
+                    <Template Context="_office">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary"
+                                      Variant="Variant.Flat"
+                                      Size="ButtonSize.Medium"
+                                      Click=@(arg => Edit(_office.OfficeId))>
+                        </RadzenButton>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+    public List<OfficeResponse>? _office; 
+    protected override async Task OnParametersSetAsync()
+    {
+        await OfficeService.GetOfficeList();
+        _office = OfficeService.Offices;
+    }
+
+    private void Edit(string officeId)
+    {
+        NavigationManager.NavigateTo($"upd-del-office/{officeId}");
+    }
+}

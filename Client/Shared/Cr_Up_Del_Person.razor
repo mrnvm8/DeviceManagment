@@ -1,0 +1,155 @@
+﻿@page "/upd-del-person"
+@page "/upd-del-person/{id}"
+@attribute [Authorize(Roles = "admin")]
+@inject IPersonService PersonService
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+
+@if (Id == null)
+{
+    <PageTitle>Create a new Person</PageTitle>
+    <h3 class="page-header">Create a new Person</h3>
+}
+else
+{
+    <PageTitle>Edit : @person.Name, @person.Surname </PageTitle>
+    <h3 class="page-header">Edit Person: =>  @person.Name, @person.Surname</h3>
+}
+
+<div class="page-content">
+    <div class="form-content">
+        <EditForm class="form-detail" Model="@person" OnValidSubmit="@HandleSubmit">
+            <DataAnnotationsValidator />
+            <div mb-3>
+                <label for="firstname">First Name</label>
+                <InputText id="firstname" @bind-Value="person.Name" class="form-control" />
+                <ValidationMessage For="@(() => person.Name)" />
+            </div>
+            <div mb-3>
+                <label for="lastname">Last Name</label>
+                <InputText id="lastname" @bind-Value="person.Surname" class="form-control" />
+                <ValidationMessage For="@(() => person.Surname)" />
+            </div>
+            <div mb-3>
+                <label for="gender">Gender</label>
+                <InputSelect @bind-Value="person.Gender" class="form-select">
+                    @foreach (var gender in Enum.GetValues(typeof(Gender)))
+                    {
+                        <option value="@gender">@gender</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <button type="submit" disabled="@disable" class="btn @btnClass mt-3 btn-shape">@btnText</button>
+            &nbsp;
+            @if (Id != null)
+            {
+
+                <button type="button" class="btn btn-danger mt-3 btn-shape"
+                @onclick="RemovePerson">
+                    Delete Person
+                </button>
+            }
+            &nbsp;
+            <a href="people" class="btn btn-info mt-3 btn-shape">Go Back </a>
+
+        </EditForm>
+    </div>
+</div>
+
+
+@code {
+
+    [Parameter]
+    public string? Id { get; set; }
+    private PersonResponse person = new PersonResponse { };
+    bool disable { get; set; } = false;
+    string btnText = string.Empty;
+    string btnClass = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        disable = false;
+        btnText = Id == null ? "Save New Person" : "Update Person";
+        btnClass = Id == null ? "btn-success" : "btn-warning";
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id != null)
+        {
+            var result = await PersonService.GetPersonById(Id);
+            if (result.Data is null)
+            {
+                disable = true;
+                ToastService.ShowError(result.Message, settings =>
+                   { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+
+            }
+            else
+            {
+                if (result != null && result.Data != null)
+                person = result.Data;
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (Id == null)
+        {
+            var result = await PersonService.AddPerson(person);
+            if (!result.Success)
+            {
+                disable = true;
+                ToastService.ShowError(result.Message, settings =>
+                     { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+            }
+            else
+            {
+                ToastService.ShowSuccess(result.Message, settings =>
+                    { settings.IconType = IconType.FontAwesome; });
+                Navigate();
+            }
+        }
+        else
+        {
+            var result = await PersonService.UpdatePerson(person);
+            if (!result.Success)
+            {
+                disable = true;
+                ToastService.ShowError(result.Message, settings =>
+                    { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+            }
+            else
+            {
+                ToastService.ShowSuccess(result.Message, settings =>
+                    { settings.IconType = IconType.FontAwesome; });
+                Navigate();
+            }
+        }
+
+    }
+
+    private async Task RemovePerson()
+    {
+        var result = await PersonService.RemovePerson(Id);
+        if (!result.Success)
+        {
+            disable = true;
+            ToastService.ShowError(result.Message, settings =>
+                    { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+        }
+        else
+        {
+            ToastService.ShowSuccess(result.Message, settings =>
+                    { settings.IconType = IconType.FontAwesome; });
+            Navigate();
+        }
+    }
+
+    private void Navigate()
+    {
+        NavigationManager.NavigateTo("people/1");
+    }
+}

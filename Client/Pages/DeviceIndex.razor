@@ -1,0 +1,168 @@
+﻿@page "/device/{id}"
+@attribute [Authorize]
+@inject IDeviceService DeviceService
+@inject IDepartmentService DepartmentService
+@inject IDeviceLoanService DeviceLoanService;
+@inject NavigationManager NavigationManager
+@inject DialogService DialogService
+
+<h3 class="page-header">Device List</h3>
+@if (_devices == null || _devices.Count == 0)
+{
+    <div class="container">
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.Center"
+                     Wrap="FlexWrap.Wrap" Class="rz-m-12"
+                     Gap="2rem">
+            <RadzenProgressBarCircular ShowValue="true" Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Large">
+                <Template>Wait</Template>
+            </RadzenProgressBarCircular>
+        </RadzenStack>
+    </div>
+}
+else
+{
+    <a class="btn btn-outline-primary btn-shape mb-3" href="upd-del-device/@id">
+        <i class="oi oi-plus"></i> Add Device
+    </a>
+    <div class="container">
+        <RadzenDataGrid Data="_devices" TItem="DeviceResponse"
+                        AllowFiltering="true"
+                        AllowPaging="true"
+                        AllowColumnResize="true"
+                        ShowPagingSummary="true"
+                        PageSize="6">
+            <Columns>
+                <RadzenDataGridColumn TItem="DeviceResponse" Property="DeviceName" Title="Device Name">
+                    <Template Context="_devices">
+                        @if(String.IsNullOrEmpty(_devices.FullName)){
+                          <a href="/assign/@_devices.DeviceId">
+                                @_devices.DeviceName
+                          </a>
+                        }
+                        else
+                        {
+                            @_devices.DeviceName
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DeviceResponse" TextAlign="TextAlign.Center" Property="Type" Title="Device Type" />
+                <RadzenDataGridColumn TItem="DeviceResponse" TextAlign="TextAlign.Center" Property="Department" Title="Program" />
+                <RadzenDataGridColumn TItem="DeviceResponse" TextAlign="TextAlign.Center" Property="Condition" Title="Device Condition" />
+                <RadzenDataGridColumn TItem="DeviceResponse" TextAlign="TextAlign.Center" Property="IdentityNumber" Title="Serial/IMEI Number" />
+                <RadzenDataGridColumn TItem="DeviceResponse" TextAlign="TextAlign.Center" Property="FullName" Title="Employeee Assigned To?">
+                    <Template Context="_devices">
+                        @if (String.IsNullOrEmpty(_devices.FullName).Equals(false))
+                        {
+                            <a href="/unassign/@_devices.DeviceId">
+                                @_devices.FullName
+                            </a>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DeviceResponse" Context="" Title="Option">
+                    <Template Context="_devices">
+                         <RadzenStack Orientation="Orientation.Horizontal">
+                            <RadzenButton Icon="help_outline" ButtonStyle="ButtonStyle.Info"
+                                          Variant="Variant.Outlined"
+                                          Size="ButtonSize.Medium"
+                                          Click=@(arg => ShowInlineDialog(_devices.DeviceId))>
+                            </RadzenButton>
+
+                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary"
+                                          Variant="Variant.Outlined"
+                                          Size="ButtonSize.Medium"
+                                          Click=@(arg => Edit(_devices.DeviceId))>
+                            </RadzenButton>
+
+                        </RadzenStack>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+
+@code {
+
+    [Parameter]
+    public string? id { get; set; }
+    public List<DeviceResponse>? _devices;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await DeviceService.GetDeviceList(id);
+        _devices = DeviceService.Devices;
+    }
+
+    private void Edit(string deviceId)
+    {
+        NavigationManager.NavigateTo($"upd-del-device/{deviceId}/{id}");
+    }
+
+    async Task ShowInlineDialog(string deviceId)
+    {
+        var _deviceInfo = _devices!.FirstOrDefault(x => x.DeviceId.Equals(deviceId));
+        var _history = (await DeviceLoanService.GetHistory(deviceId)).Data;
+        var _device = _devices!.FirstOrDefault(x => x.DeviceId.Equals(deviceId));
+
+        var dialog = await DialogService.OpenAsync("", ds =>
+            @<RadzenStack Gap="1.5rem">
+                <h3 class="page-header">More Device Information</h3>
+                <RadzenCard class="rz-background-color-info-lighter" Style="width: 70%; justify-content:center; margin-left:15%" >
+                    <RadzenRow RowGap="0">
+                        <RadzenColumn>
+                            <RadzenRow>
+                                <RadzenText TextStyle="TextStyle.Body1" >Serial/IMEI Number:</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1" ><b>@_device!.IdentityNumber</b></RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1" >Purchase Date:</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1" ><b>@_device!.PurchasedDate.ToString("yyyy-MM-dd")</b></RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1" >Purchase Price:</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1" ><b>R@_device!.PurchasedPrice</b></RadzenText>
+                            </RadzenRow>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenCard>
+                 <h3 class="page-header">Loan History Of The Devices</h3>
+                 <RadzenDataGrid Data="_history" TItem="DeviceHistoryResponse"
+                        AllowFiltering="true"
+                        AllowPaging="true"
+                        AllowColumnResize="true"
+                        PageSize="6">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="DeviceHistoryResponse" Property="EmployeeName" Title="Employee Name">
+                                <Template Context="_history">
+                                    @_history.EmployeeName
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="DeviceHistoryResponse" TextAlign="TextAlign.Center" Property="DeviceName" Title="Device Name" />
+                            <RadzenDataGridColumn TItem="DeviceHistoryResponse" TextAlign="TextAlign.Center" Property="AssignedDate.Tostr" Title="Assigned Date" >
+                                <Template Context="_history">
+                                    @_history.AssignedDate.ToString("yyyy-MM-dd")
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="DeviceHistoryResponse" TextAlign="TextAlign.Center" Property="UnassignedDate" Title="Unassigned Date">
+                                <Template Context="_history">
+                                    @if (@_history.UnassignedDate!.Value.ToString("yyyy-MM-dd") != "2009-01-01")
+                                    {
+                                          @_history.UnassignedDate.Value.ToString("yyyy-MM-dd")
+                                    }
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="DeviceHistoryResponse" TextAlign="TextAlign.Center" Property="CurrentValuePrice" Title="Current Price" >
+                                  <Template Context="_history">
+                                    R@_history.CurrentValuePrice.ToString("#.##")
+                                </Template>
+                            </RadzenDataGridColumn>
+
+                        </Columns>
+                 </RadzenDataGrid>
+            </RadzenStack>
+            , new DialogOptions { Width = "70%", Height = "512px", Resizable = false, Draggable = false }
+        );
+
+    }
+}

@@ -1,0 +1,73 @@
+﻿@page "/people"
+@attribute [Authorize(Roles = "admin")]
+@inject IPersonService PersonService
+@inject NavigationManager NavigationManager
+
+<h3 class="page-header">People List</h3>
+
+@if (_people == null || _people.Count == 0)
+{
+    <div class="container">
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.Center"
+                     Wrap="FlexWrap.Wrap" Class="rz-m-12"
+                     Gap="2rem">
+            <RadzenProgressBarCircular ShowValue="true" Mode="ProgressBarMode.Indeterminate"
+                Size="ProgressBarCircularSize.Large">
+                <Template>Wait</Template>
+            </RadzenProgressBarCircular>
+        </RadzenStack>
+    </div>
+}
+else
+{
+    <a class="btn btn-outline-primary btn-shape mb-3" href="upd-del-person">
+        <i class="oi oi-plus"></i> Add Person
+    </a>
+    <div class="container">
+        <RadzenDataGrid Data="_people" TItem="PersonResponse"
+                        AllowFiltering="true"
+                        AllowPaging="true"
+                        AllowColumnResize="true"
+                        ShowPagingSummary="true"
+                        PageSize="6">
+            <Columns>
+                <RadzenDataGridColumn TItem="PersonResponse" Property="PersonId" Title="Person ID">
+                    <Template Context="_people">
+                        @_people.PersonId
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="PersonResponse" TextAlign="TextAlign.Center" Property="Name" Title="First Name" />
+                <RadzenDataGridColumn TItem="PersonResponse" TextAlign="TextAlign.Center" Property="Surname" Title="Last Name" />
+                <RadzenDataGridColumn TItem="PersonResponse" TextAlign="TextAlign.Center" Property="Gender" Title="Gender" />
+                <RadzenDataGridColumn TItem="PersonResponse" Context="_people" Title="Option" TextAlign="TextAlign.Center" Width="100px">
+                    <Template Context="_people">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary" 
+                                      Variant="Variant.Flat" 
+                                      Size="ButtonSize.Medium"
+                                      Click=@(arg => Edit(_people.PersonId))>
+                        </RadzenButton>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+
+    public List<PersonResponse>? _people;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        //await PersonService.GetPeopleList();
+        await PersonService.GetPeopleList();
+        _people = PersonService.People;
+    }
+
+    private void Edit(string personId)
+    {
+        NavigationManager.NavigateTo($"upd-del-person/{personId}");
+    }
+}

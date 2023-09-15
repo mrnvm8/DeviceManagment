@@ -1,0 +1,123 @@
+﻿@page "/acknowledge/{id}"
+@attribute [Authorize(Roles = "admin")]
+@inject IToastService ToastService
+@inject ITicketService TicketService
+@inject NavigationManager NavigationManager
+@inject DialogService DialogService
+
+<h3 class="page-header">Ticket Acknowledgement</h3>
+
+<RadzenCard Class="rz-my-1 rz-mx-auto rz-background-color-primary-light" Style="max-width: 100%">
+        <RadzenText TextStyle="TextStyle.H6" class="rz-color-on-primary-light"><strong>Ticket Information</strong></RadzenText>
+         <RadzenRow RowGap="0">
+            <RadzenColumn SizeSM="4">
+                <RadzenText TextStyle="TextStyle.Overline" class="rz-color-on-primary-light rz-display-flex rz-mt-4 rz-mb-1">Ticket Tittle</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@_ticket.TicketTitle</b></RadzenText>
+                <RadzenText TextStyle="TextStyle.Overline" class="rz-color-on-primary-light rz-display-flex rz-mt-4 rz-mb-1">Device Name</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@_ticket.DeviceName</b></RadzenText>
+            </RadzenColumn>
+
+            <RadzenColumn SizeSM="8">
+                <RadzenText TextStyle="TextStyle.Overline" class="rz-color-on-primary-light rz-display-flex rz-mt-4 rz-mb-1">Department</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@_ticket.Department</b></RadzenText>
+                <RadzenText TextStyle="TextStyle.Overline" class="rz-color-on-primary-light rz-display-flex rz-mt-4 rz-mb-1">Created Date</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@_ticket.TicketDate.ToString("yyyy-MM-dd")</b></RadzenText>
+            </RadzenColumn>
+
+            <RadzenColumn SizeMD="4">
+                <RadzenText TextStyle="TextStyle.Overline" class="rz-color-on-primary-light rz-display-flex rz-mt-4 rz-mb-2">Ticket Issue</RadzenText>
+                    <RadzenButton Text="Click Me" ButtonStyle="ButtonStyle.Warning" Click=@(() => ShowInlineDialog(_ticket.TicketIssue)) />
+            </RadzenColumn>
+         </RadzenRow>
+</RadzenCard>
+
+<div class="">
+   <div class="">
+ 
+
+       <EditForm class="form-detail" Model="_ticket" OnValidSubmit="HandleSubmit">
+            
+            <div class="rz-p-3 rz-text-align-center">
+               <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H3">Fixing Arrangement Date</RadzenText>
+               <RadzenDatePicker @bind-Value=@_ticket.ArangedDate />
+            </div>
+
+            <div class="container-fluid text-center" style="max-width: 70%">
+                 <div class="row ">
+                    <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H3">Tell the Ticket creator when it is going to be fixed</RadzenText>
+                    <RadzenTextArea @bind-Value=@_ticket.TicketUpdate Cols="30" Rows="6" />
+                 </div>
+            </div>
+
+            <div class="mt-3 text-center">
+                <button type="submit" class="btn btn-warning btn-shape">Acknowledgement</button>
+                &nbsp;
+                &nbsp;
+                <a class="btn btn-primary mt-1 btn-shape" href="ticket">Tickets</a>
+            </div>
+       </EditForm>
+    </div>
+</div>
+
+@code {
+
+    [Parameter]
+    public string? Id { get; set; }
+    private TicketResponse _ticket { get; set; } = new TicketResponse();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id is not null)
+        {
+            var result = await TicketService.GetTicketById(Id);
+            if (result.Data is null)
+            {
+                ToastService.ShowError(result.Message, settings =>
+                     { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+            }
+            else
+            {
+                if (result is not null && result.Data is not null)
+                {
+                    _ticket = result.Data;
+                    _ticket.ArangedDate = DateTime.Now;
+                }
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+
+        if (Id is not null)
+        {
+            var result = await TicketService.AcknowlegeTicket(_ticket);
+
+            if (!result.Success)
+            {
+                ToastService.ShowError(result.Message, settings =>
+                { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+               
+            }
+            else
+            {
+                ToastService.ShowSuccess(result.Message, settings =>
+               { settings.IconType = IconType.FontAwesome; });
+                Navigate();
+            }
+        }
+    }
+
+    async Task ShowInlineDialog(string? Issue)
+    {
+        var result = await DialogService.OpenAsync("Ticket Issue", ds =>
+        @<RadzenStack Gap="1.5rem">
+            <p>@Issue</p>
+        </RadzenStack>);
+    }
+
+    private void Navigate()
+    {
+        NavigationManager.NavigateTo("ticket");
+    }
+}

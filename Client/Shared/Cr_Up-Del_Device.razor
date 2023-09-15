@@ -1,0 +1,233 @@
+﻿@page "/upd-del-device/{prevId}"
+@page "/upd-del-device/{Id}/{prevId}"
+@attribute [Authorize]
+@inject IDeviceService DeviceService
+@inject IDeviceTypeService DeviceTypeService
+@inject IDepartmentService DepartmentService
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+@inject DialogService DialogService
+
+<div class="page-content">
+    <div class="form-content">
+        @if (Id == null)
+        {
+            <PageTitle>New device</PageTitle>
+            <h3 class="page-header">Adding a new device</h3>
+        }
+        else
+        {
+            <PageTitle>Edit @_device.DeviceName </PageTitle>
+            <h3 class="page-header">Edit Device: =>  @_device.DeviceName</h3>
+        }
+        <EditForm class="form-detail" Model="@_device" OnValidSubmit="@HandleSubmit">
+            <DataAnnotationsValidator />
+            <div class="form-row-total">
+                <div class="form-row">
+                    <label class="text-center">Device Types</label>
+                    <InputSelect @bind-Value="_device.TypeId" class="form-select">
+                        @foreach (var type in DeviceTypeService.DeviceTypes)
+                        {
+                            <option value="@type.Id">@type.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+                &nbsp;
+                &ensp;
+                <div class="form-row">
+                    <label>Device Names</label>
+                    <InputText id="deviceName" @bind-Value="_device.DeviceName" class="form-control" />
+                    <ValidationMessage For="@(() => _device.DeviceName)" />
+                </div>
+                &nbsp;
+                &ensp;
+                <div class="form-row">
+                    <label class="text-center">Department</label>
+                    <InputSelect @bind-Value="_device.DepartmentId" class="form-select">
+                        @foreach (var depart in DepartmentService.Departments)
+                        {
+                            <option value="@depart.DepartId">@depart.DepartmentName => @depart.OfficeName</option>
+                        }
+                    </InputSelect>
+                </div>
+            </div>
+
+            <div class="form-row-total">
+                <div class="form-row">
+                    <label>Device Condition</label>
+                    <InputSelect @bind-Value="_device.Condition" class="form-select">
+                        @foreach (var condition in Enum.GetValues(typeof(Condition)))
+                        {
+                            <option value="@condition">@condition</option>
+                        }
+                    </InputSelect>
+                </div>
+                &nbsp;
+                &ensp;
+                <div class="form-row">
+                    <label>Purchase Date</label>
+                    <InputDate @bind-Value="_device.PurchasedDate" class="form-control" />
+                    <ValidationMessage For="@(() => _device.PurchasedDate)" />
+                </div>
+                &nbsp;
+                &ensp;
+                <div class="form-row">
+                    <label>Purchase Price</label>
+                    <InputNumber @bind-Value="_device.PurchasedPrice" class="form-control" />
+                    <ValidationMessage For="@(() => _device.PurchasedPrice)" />
+                </div>
+            </div>
+
+            <div class="form-row-total">
+                <div class="form-row">
+                    <label>Serial Number(S/N): </label>
+                    <InputText @bind-Value="_device.SerialNo" class="form-control" />
+                    <ValidationMessage For="@(() => _device.SerialNo)" />
+                </div>
+                &nbsp;
+                &ensp;
+                <div class="form-row">
+                    <label>IMEI Number(IMEI): </label>
+                    <InputText @bind-Value="_device.IMEINo" class="form-control" />
+                    <ValidationMessage For="@(() => _device.IMEINo)" />
+                </div>
+            </div>
+
+            @*button for form *@
+            <div class="text-center">
+                <button type="submit" class="btn @btnClass mt-3 btn-shape">@btnText</button>
+                &nbsp;
+                @if (Id != null)
+                {
+
+                   <RadzenButton class="btn-shape" Icon="delete" Text="Delete" ButtonStyle="ButtonStyle.Danger"
+                                  Click=@(args =>RemoveDevice(_device.DeviceId)) @onclick:stopPropagation="true"/>
+                }
+                &nbsp;
+                <a href="device/@PrevId" class="btn btn-info mt-3 btn-shape">Go Back </a>
+            </div>
+
+        </EditForm>
+    </div>
+</div>
+
+@code {
+
+    [Parameter]
+    public string? Id { get; set; }
+
+    [Parameter]
+    public string? PrevId { get; set; } 
+
+    private DeviceResponse _device = new DeviceResponse();
+    private string CurrentValue { get; set; } = string.Empty;
+    string btnText = string.Empty;
+    string btnClass = string.Empty;
+    bool disable { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        disable = false;
+        btnText = Id == null ? "Add New Device " : "Update Device";
+        btnClass = Id == null ? "btn-success" : "btn-warning";
+        await DeviceTypeService.GetDeviceTypes();
+        await DepartmentService.GetDepartmentList();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id is null)
+        {
+            //intilialising the select inputs
+            var DeviceType = DeviceTypeService.DeviceTypes[0];
+            _device.TypeId = DeviceType.Id;
+            var Department = DepartmentService.Departments[0];
+            _device.DepartmentId = Department.DepartId;
+        }
+        else
+        {
+            var result = await DeviceService.GetDeviceById(Id);
+            if (!result.Success)
+            {
+                ToastService.ShowError(result.Message, settings =>
+                      { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+            }
+            else
+            {
+                _device = result.Data;
+            }
+        }
+    }
+    private async Task HandleSubmit()
+    {
+        if (String.IsNullOrEmpty(_device.SerialNo) && 
+            String.IsNullOrEmpty(_device.IMEINo))
+        {
+            ToastService.ShowError("Both Serial / IMEI can not be Empty 😠", settings =>
+                      { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+            disable = true;
+
+        }
+        else
+        {
+            if (Id is null)
+            {
+                var result = await DeviceService.AddDevice(_device);
+                if (!result.Success)
+                {
+                    ToastService.ShowError(result.Message, settings =>
+                        { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+                }
+                else
+                {
+                    ToastService.ShowSuccess(result.Message, settings =>
+                        { settings.IconType = IconType.FontAwesome; });
+                    Navigate();
+                }
+            }
+            else
+            {
+                var result = await DeviceService.UpdateDevice(_device);
+                if (!result.Success)
+                {
+                    ToastService.ShowError(result.Message, settings =>
+                        { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+                }
+                else
+                {
+                    ToastService.ShowSuccess(result.Message, settings =>
+                        { settings.IconType = IconType.FontAwesome; });
+                    Navigate();
+                }
+            }
+        }
+    }
+
+    private async Task RemoveDevice(string deviceId)
+    {
+        var ConformationResult = await DialogService.Confirm("Are you sure?, you want to delete the device", "Delete Confirmation",
+                                  new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No", });
+
+        if (ConformationResult == true)
+        {
+            var result = await DeviceService.RemoveDevice(deviceId);
+            if (!result.Success)
+            {
+                ToastService.ShowError(result.Message, settings =>
+                           { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+            }
+            else
+            {
+                ToastService.ShowSuccess(result.Message, settings =>
+                      { settings.IconType = IconType.FontAwesome; });
+                Navigate();
+            }
+        }
+    }
+
+    private void Navigate()
+    {
+        NavigationManager.NavigateTo($"device/{PrevId}");
+    }
+
+}

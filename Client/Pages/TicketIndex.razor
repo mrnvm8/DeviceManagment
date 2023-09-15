@@ -1,0 +1,217 @@
+﻿@page "/ticket"
+@using System.Security.Claims;
+@attribute [Authorize]
+@inject ITicketService TicketService
+@inject NavigationManager NavigationManager
+@inject DialogService DialogService
+@inject IToastService ToastService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IAuthService AuthService
+
+<h3 class="page-header">Tickets</h3>
+
+<a class="btn btn-outline-primary btn-shape mb-3" href="upd-del-ticket">
+    <i class="oi oi-plus"></i> Add Ticket
+</a>
+
+@if (_tickets == null || _tickets.Count == 0)
+{
+    <div class="container">
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.Center"
+                     Wrap="FlexWrap.Wrap" Class="rz-m-12"
+                     Gap="2rem">
+            <RadzenProgressBarCircular ShowValue="true" Mode="ProgressBarMode.Indeterminate"
+                Size="ProgressBarCircularSize.Large">
+                <Template>Wait</Template>
+            </RadzenProgressBarCircular>
+        </RadzenStack>
+    </div>
+}
+else
+{
+    <RadzenDataList  AllowVirtualization="false"
+                        Style="height:400px;overflow:auto;"
+                        WrapItems="true"
+                        AllowPaging="true"
+                        Data="@_tickets" 
+                        TItem="TicketResponse" 
+                        PageSize="5" 
+                        PagerHorizontalAlign="HorizontalAlign.Left"
+                        ShowPagingSummary="true">
+
+        <Template Context="_tickets">
+            @if(!_tickets.IssueSolved)
+            {
+                <RadzenCard Style="max-height: 5rem; width: 100%; padding: 0;" class="rz-border-primary-lighter">
+                     <RadzenColumn Size="12" SizeLG="7" Class="rz-p-3">
+                         <RadzenRow Gap="0">
+                            <RadzenColumn >
+                                <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" Class="rz-mb-2">Ticket Title</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1" class="rz-color-secondary">@(_tickets.TicketTitle)</RadzenText>
+                            </RadzenColumn>
+                            <RadzenColumn  >
+                                <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" Class="rz-mb-2">Device Type</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1">@(_tickets.DeviceType)</RadzenText>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6" SizeLG="2">
+                                <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" Class="rz-mb-2">Device Name</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1">@(_tickets.DeviceName)</RadzenText>
+                            </RadzenColumn>
+                            <RadzenColumn >
+                                 <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" Class="rz-mb-2">Program</RadzenText>
+                                 <RadzenText TextStyle="TextStyle.Body1">@(_tickets.Department)</RadzenText>
+                             </RadzenColumn>
+                            <RadzenColumn >
+                                <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" Class="rz-mb-2">Created Date</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1">@(_tickets.TicketDate.ToString("yyyy-MM-dd"))</RadzenText>
+                            </RadzenColumn>
+
+                                <RadzenColumn Size="12" SizeMD="6" SizeLG="2">
+                                <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" Class="rz-mb-2">Seen By Tech</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1">
+                                        @if (_tickets.Updated)
+                                        {
+                                            <div class="text-success mx-5">
+                                                <RadzenIcon Icon="done" />
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="text-danger mx-5">
+                                                <RadzenIcon Icon="highlight_off" />
+                                            </div>
+                                        }
+                                 </RadzenText>
+                            </RadzenColumn>
+                            <RadzenColumn Style="padding-top:0.5rem;">
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap">
+                                    @if (_tickets.Updated == false)
+                                    {
+                                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Secondary" 
+                                                      Variant="Variant.Outlined"
+                                                      Size="ButtonSize.Medium"
+                                                      Click=@(arg => Edit(_tickets.TicketId))>
+                                        </RadzenButton>
+                                    }
+                                    <RadzenButton Icon="lightbulb_outline" ButtonStyle="ButtonStyle.Success"
+                                                  Variant="Variant.Outlined"
+                                                  Size="ButtonSize.Medium"
+                                                  Click=@(arg => ShowInlineDialog(_tickets.TicketId))>
+                                    </RadzenButton>
+
+                                    @if(authorizedAsAdmin)
+                                    {
+                                        @if(_tickets.Updated){
+                                            <RadzenButton Icon="gavel" ButtonStyle="ButtonStyle.Info"
+                                                          Variant="Variant.Outlined"
+                                                          Size="ButtonSize.Medium"
+                                                          Click=@(arg => Archice(_tickets.TicketId))>
+                                            </RadzenButton>
+                                        }
+                                        else
+                                        {
+                                        
+                                            <RadzenButton Icon="done" ButtonStyle="ButtonStyle.Warning"
+                                                          Variant="Variant.Outlined"
+                                                          Size="ButtonSize.Medium"
+                                                          Click=@(arg => Acknowledge(_tickets.TicketId))>
+                                            </RadzenButton>
+                                        }
+                                    }
+                                </RadzenStack>
+                            </RadzenColumn>
+                         </RadzenRow>
+                     </RadzenColumn>
+                 </RadzenCard>
+             }
+        </Template>
+    </RadzenDataList>
+    
+}
+@code {
+    public List<TicketResponse>? _tickets;
+    bool authorizedAsAdmin = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await AuthService.IsUserAuthenticated())
+        {
+            string role = (await AuthenticationStateProvider.GetAuthenticationStateAsync())
+        .User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role).Value;
+
+            if (role.Contains("admin"))
+            {
+                authorizedAsAdmin = true;
+            }
+        }
+        await TicketService.GetTickets();
+        _tickets = TicketService.Tickets;
+    }
+
+
+    private void Edit(string ticketId)
+    {
+        NavigationManager.NavigateTo($"upd-del-ticket/{ticketId}");
+    }
+
+    private void Acknowledge(string ticketId)
+    {
+        NavigationManager.NavigateTo($"acknowledge/{ticketId}");
+    }
+
+    private void Archice(string ticketId)
+    {
+        NavigationManager.NavigateTo($"archive-ticket/{ticketId}");
+    }
+
+    async Task ShowInlineDialog(string ticketId)
+    {
+        var _response = _tickets!.FirstOrDefault(x => x.TicketId.Equals(ticketId));
+
+        var dialog = await DialogService.OpenAsync("Ticket Information", ds =>
+            @<RadzenStack Gap="1.5rem">
+                <RadzenCard class="rz-background-color-primary-light rz-shadow-0 rz-border-radius-0 rz-p-8" style="margin: 1rem calc(-1 * var(--rz-card-padding));">
+                    <RadzenRow RowGap="10px">
+                        <RadzenColumn class="rz-p-5">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-color-on-primary-light rz-display-flex rz-mt-4 rz-mb-1">Ticket Tittle</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@_response.TicketTitle</b></RadzenText>
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-color-on-primary-light rz-display-flex rz-mt-4 rz-mb-1">Device Name</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@_response.DeviceName</b></RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn class="rz-p-5">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-color-on-primary-light rz-display-flex rz-mt-4 rz-mb-1">Department</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@_response.Department</b></RadzenText>
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-color-on-primary-light rz-display-flex rz-mt-4 rz-mb-1">Created Date</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light"><b>@_response.TicketDate.ToString("yyyy-MM-dd")</b></RadzenText>
+                        </RadzenColumn>
+                        <RadzenColumn class="rz-p-5">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-color-on-primary-light rz-display-flex rz-mt-4 rz-mb-1">Seen by Tech</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light">
+                                @if (_response.Updated)
+                                {
+                                    <b>Yes</b>
+                                }else{
+                                    <b>No</b>
+                                }
+                            </RadzenText>
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-color-on-primary-light rz-display-flex rz-mt-4 rz-mb-1">Fixing Date</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-color-on-primary-light">
+                                <b>
+                                    @if (_response.Updated)
+                                    {
+                                        @_response.ArangedDate.ToString("yyyy-MM-dd")
+                                    }
+                                </b>
+                            </RadzenText>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenCard>
+                <RadzenText TextStyle="TextStyle.H6">Device Issue</RadzenText>
+                @_response.TicketIssue.
+            </RadzenStack>
+            ,new DialogOptions { Width = "50%", Height = "512px", Resizable = false, Draggable = false }
+        );
+    }
+}

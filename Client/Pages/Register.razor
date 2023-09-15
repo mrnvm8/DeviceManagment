@@ -1,0 +1,78 @@
+﻿@page "/register"
+@attribute [Authorize(Roles = "admin")]
+@inject IAuthService AuthService
+@inject IEmployeeService EmployeeService
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+
+<PageTitle>Register </PageTitle>
+<h3 class="page-header">Register a new User</h3>
+
+<div class="page-content">
+    <div class="form-content">
+        <EditForm Model="user" OnValidSubmit="HandleRegistration">
+            <DataAnnotationsValidator />
+            <div class="mb-3">
+                <label for="employeeId">Email</label>
+                <InputSelect id="employeeId" @bind-Value="user.EmployeeId" class="form-select">
+                    @foreach (var emp in EmployeeService.Employees)
+                    {
+                        <option value="@emp.EmplyeeId">@emp.Email</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => user.EmployeeId)" />
+            </div>
+            <div class="mb-3">
+                <label for="password">Password</label>
+                <InputText type="password" id="password" @bind-Value="user.Password" class="form-control" />
+                <ValidationMessage For="@(() => user.Password)" />
+            </div>
+            <div class="mb-3">
+                <label for="confirmPassword">Confirm Password</label>
+                <InputText type="password" id=" confirmPassword" @bind-Value="user.ConfirmPassword" class="form-control" />
+                <ValidationMessage For="@(() => user.ConfirmPassword)" />
+            </div>
+            <div class="text-center mt-2">
+                <button type="submit" class="btn btn-warning btn-shape">Register Login</button>
+                <a class="btn btn-primary btn-shape" href="user/1">Back To Users</a>
+            </div>
+
+        </EditForm>
+    </div>
+</div>
+
+@code {
+
+    UserRegister user = new UserRegister();
+   
+    protected override async Task OnInitializedAsync()
+    {
+        await EmployeeService.GetEmployeeList();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var employee = EmployeeService.Employees[0];
+        user.EmployeeId = employee.EmplyeeId;
+    }
+
+    async void HandleRegistration()
+    {
+        var result = await AuthService.Registration(user);
+        if (!result.Success)
+        {
+            ToastService.ShowError(result.Message, settings =>
+                    { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+        }
+        else
+        {
+            ToastService.ShowSuccess(result.Message, settings =>
+                  { settings.IconType = IconType.FontAwesome; });
+            Navigate();
+        }
+    }
+    private void Navigate()
+    {
+        NavigationManager.NavigateTo("");
+    }
+}

@@ -1,0 +1,154 @@
+﻿@inject ILocalStorageService LocalStorage
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject IAuthService AuthService
+@inject IDeviceTypeService DeviceTypeService
+@using System.Security.Claims
+
+<div class="top-row ps-3 navbar navbar-dark navbar-toggler-wrapper">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Device Management</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass">
+    <nav class="flex-column">
+
+        <AuthorizeView>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span class="oi oi-home" aria-hidden="true"></span> Home
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span class="oi oi-home" aria-hidden="true"></span> Home
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <div class="dropdown">
+                        <a class="nav-link dropdown-toggle dropup" user-button @onclick="DeviceToggleNavMenu">
+                            <span class="oi oi-camera-slr" aria-hidden="true"></span>Devices
+                        </a>
+                        <ul class="dropdown-menu @DeviceMenuCssClass">
+                            @foreach (var type in _Types)
+                            {
+                                if (type.Total > 0)
+                                {
+                                    <div class="nav-item px-3">
+                                        <NavLink class="nav-link" href="@GetLink(type.Id)">
+                                            @type.Name <span class="badge text-bg-secondary">@type.Total</span>
+                                        </NavLink>
+                                    </div>
+                                } 
+                            }
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="ticket">
+                        <span class="oi oi-chat" aria-hidden="true"></span> Tickets
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <div class="dropdown-center">
+                        <a class="nav-link dropdown-toggle dropup" user-button @onclick="AdminToggleNavMenu">
+                            <span class="oi oi-flag" aria-hidden="true"></span> Admin Interface
+                        </a>
+                        <ul class="dropdown-menu @UserMenuCssClass dropup">
+                            @if (authorized)
+                            {
+                                <AdminMenu />
+                            }
+                            else
+                            {
+                                <div class="nav-item px-3">
+                                    <NavLink class="nav-link" href="changepassword">
+                                        <span class="oi oi-loop-circular" aria-hidden="true"></span> Change Password
+                                    </NavLink>
+                                </div>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+
+    private bool collapseNavMenu = true;
+    private bool showAdminMenu = false;
+    private bool collapseDevice = false;
+    private List<DeviceTypeResponse> _Types = new List<DeviceTypeResponse>();
+    private int total = 0;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    private string? UserMenuCssClass => showAdminMenu ? "collapse" : null;
+    private string? DeviceMenuCssClass => collapseDevice ? "collapse" : null;
+
+    bool authorized = false;
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void AdminToggleNavMenu()
+    {
+        collapseDevice = false;
+        showAdminMenu = !showAdminMenu;
+    }
+
+    void DeviceToggleNavMenu()
+    {
+        showAdminMenu = false;
+        collapseDevice = !collapseDevice;
+    }
+
+    private async Task Logout()
+    {
+        await LocalStorage.RemoveItemAsync("authToken");
+        await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        NavigationManager.NavigateTo("");
+    }
+
+    private string GetLink(string Id)
+    {
+        return $"/device/{Id}";
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (await AuthService.IsUserAuthenticated())
+        {
+            await DeviceTypeService.GetDeviceTypes();
+            _Types = DeviceTypeService.DeviceTypes;
+        }
+      
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        if (await AuthService.IsUserAuthenticated())
+        {
+            string role = (await AuthenticationStateProvider.GetAuthenticationStateAsync())
+            .User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role).Value;
+
+            if (role.Contains("admin"))
+            {
+                authorized = true;
+            }
+        }
+    }
+
+}

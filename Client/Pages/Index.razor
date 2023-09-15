@@ -1,0 +1,109 @@
+﻿@page "/"
+@inject IDeviceService DeviceService
+
+<h3 class="page-header">Charts</h3>
+<div class="container">
+    <div class="flex-column">
+        <div class="col-sm-12 my-5">
+
+            @if (_dataItems.Count == 0)
+            {
+                <RadzenStack Orientation="Orientation.Horizontal"
+                             AlignItems="AlignItems.Center"
+                             JustifyContent="JustifyContent.Center"
+                             Wrap="FlexWrap.Wrap" Class="rz-m-12"
+                             Gap="2rem">
+                    <RadzenProgressBarCircular ShowValue="true" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large">
+                        <Template>Wait</Template>
+                    </RadzenProgressBarCircular>
+                </RadzenStack>
+            }
+            else
+            {
+                <RadzenSplitter Orientation="Orientation.Vertical" style="height: 400px; border: 1px solid rgba(0,0,0,.08);">
+                    <RadzenSplitterPane>
+                        <RadzenSplitter>
+                            <RadzenSplitterPane>
+                                <h4 class="text-center page-header">Amount Spent on Devices</h4>
+                                <div style="font-size: 10px;">
+                                    <RadzenChart class="w-100 mb-4 chart">
+                                        <RadzenLineSeries Smooth="true" Data="@_laptops" CategoryProperty="Year" Title="Laptops" ValueProperty="Sum">
+                                            <RadzenMarkers MarkerType="MarkerType.Circle" />
+                                            <RadzenSeriesDataLabels Visible="false" />
+                                        </RadzenLineSeries>
+                                        <RadzenLineSeries Smooth="true" Data="@_tablets" CategoryProperty="Year" Title="Tablets" ValueProperty="Sum">
+                                            <RadzenMarkers MarkerType="MarkerType.Square" />
+                                            <RadzenSeriesDataLabels Visible="false" />
+                                        </RadzenLineSeries>
+                                        <RadzenLineSeries Smooth="true" Data="@_phones" CategoryProperty="Year" Title="phones" LineType="LineType.Dashed" ValueProperty="Sum">
+                                            <RadzenMarkers MarkerType="MarkerType.Square" />
+                                            <RadzenSeriesDataLabels Visible="false" />
+                                        </RadzenLineSeries>
+                                        <RadzenValueAxis>
+                                            <RadzenGridLines Visible="false" />
+                                            <RadzenAxisTitle Text="Device Amount" />
+                                        </RadzenValueAxis>
+                                    </RadzenChart>
+                                </div>
+                            </RadzenSplitterPane>
+                            <RadzenSplitterPane>
+                                <h4 class="text-center page-header">Broken Laptop during the years</h4>
+                                <div style="font-size: 10px;">
+                                    <RadzenChart>
+                                        <RadzenDonutSeries Data="@_laptops" CategoryProperty="Year" ValueProperty="Sum">
+                                            <ChildContent>
+                                                <RadzenSeriesDataLabels Visible="true" />
+                                            </ChildContent>
+                                            <TitleTemplate>
+                                                <div class="rz-donut-content">
+                                                    <div>Devices</div>
+                                                    <div>for Years</div>
+                                                </div>
+                                            </TitleTemplate>
+                                        </RadzenDonutSeries>
+                                    </RadzenChart>
+                                </div>
+                            </RadzenSplitterPane>
+                        </RadzenSplitter>
+                    </RadzenSplitterPane>
+                </RadzenSplitter>
+            }
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private List<DataItem> _dataItems = new List<DataItem>();
+    private List<LineSeriesResponse>? _laptops, _tablets, _phones;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await DeviceService.GetDeviceByBoughtYear();
+        if(result is not null && result.Data is not null)
+        {
+            _dataItems = result.Data;
+        }
+        _laptops = ChartInformation(1, _dataItems);
+        _tablets = ChartInformation(2, _dataItems);
+        _phones = ChartInformation(3, _dataItems);
+    }
+
+    private List<LineSeriesResponse> ChartInformation(int typeId, List<DataItem> dataItems)
+    {
+        var response = new List<LineSeriesResponse>();
+         foreach (var year in dataItems)
+         {
+             foreach (var info in year.Items.Where(x => x.Type.Equals(typeId)))
+             {
+                 response.Add(new LineSeriesResponse
+                    {
+                        Year = year.Year,
+                        Sum = info.Sum
+                 });
+             }
+         }
+        return response;
+    }
+}

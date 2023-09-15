@@ -1,0 +1,83 @@
+﻿@page "/employee"
+@attribute [Authorize(Roles = "admin")]
+@inject IEmployeeService EmployeeService
+@inject NavigationManager NavigationManager
+
+<h3 class="page-header">Employees List</h3>
+@if (_employee == null || _employee.Count == 0)
+{
+    <div class="container">
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.Center"
+                     Wrap="FlexWrap.Wrap" Class="rz-m-12"
+                     Gap="2rem">
+            <RadzenProgressBarCircular ShowValue="true" Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Large">
+                <Template>Wait</Template>
+            </RadzenProgressBarCircular>
+        </RadzenStack>
+    </div>
+}
+else
+{
+    <a class="btn btn-outline-primary btn-shape mb-3" href="upd-del-employee">
+        <i class="oi oi-plus"></i> Add Employee
+    </a>
+    <div class="container">
+        <RadzenDataGrid Data="_employee" TItem="EmployeeResponse"
+                        AllowFiltering="true"
+                        AllowPaging="true"
+                        AllowColumnResize="true"
+                        ShowPagingSummary="true"
+                        PageSize="6">
+            <Columns>
+                <RadzenDataGridColumn TItem="EmployeeResponse" Property="FullName" Title="Employee Name">
+                    <Template Context="_employee">
+                        @_employee.FullName
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="EmployeeResponse" TextAlign="TextAlign.Center" Property="DepartmentName" Title="Program" />
+                <RadzenDataGridColumn TItem="EmployeeResponse" TextAlign="TextAlign.Center" Property="OfficeName" Title="Office Name" />
+                <RadzenDataGridColumn TItem="EmployeeResponse" TextAlign="TextAlign.Center" Property="Email" Title=" Work Email" />
+                <RadzenDataGridColumn TItem="EmployeeResponse" TextAlign="TextAlign.Center" Property="IsActive" Title=" Employee Active">
+                    <Template Context="_employee">
+                        @if(_employee.IsActive){
+                            <span class="text-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="text-danger">Not Active</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="EmployeeResponse" Context="_employee" Title="Option" TextAlign="TextAlign.Center" Width="100px">
+                    <Template Context="_employee">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary"
+                                      Variant="Variant.Flat"
+                                      Size="ButtonSize.Medium"
+                                      Click=@(arg => Edit(_employee.EmplyeeId))>
+                        </RadzenButton>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+@code {
+
+    public List<EmployeeResponse>? _employee;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        //await EmployeeService
+        await EmployeeService.GetEmployeeList();
+        _employee = EmployeeService.Employees;
+    }
+
+    private void Edit(string employeeId)
+    {
+        NavigationManager.NavigateTo($"upd-del-employee/{employeeId}");
+    }
+}

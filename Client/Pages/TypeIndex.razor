@@ -1,0 +1,71 @@
+﻿@page "/type"
+@attribute [Authorize(Roles = "admin")]
+@inject IDeviceTypeService DeviceTypeService
+@inject NavigationManager NavigationManager
+
+
+<h3 class="page-header">Device Type List</h3>
+@if (_Types == null || _Types.Count == 0)
+{
+    <div class="container">
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.Center"
+                     Wrap="FlexWrap.Wrap" Class="rz-m-12"
+                     Gap="2rem">
+            <RadzenProgressBarCircular ShowValue="true" Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Large">
+                <Template>Wait</Template>
+            </RadzenProgressBarCircular>
+        </RadzenStack>
+    </div>
+}
+else
+{
+    <a class="btn btn-outline-primary btn-shape mb-3" href="upd-del-type">
+        <i class="oi oi-plus"></i> Add Device Type
+    </a>
+    <div class="container">
+        <RadzenDataGrid Data="_Types" TItem="DeviceTypeResponse"
+                        AllowFiltering="true"
+                        AllowPaging="true"
+                        AllowColumnResize="true"
+                        ShowPagingSummary="true"
+                        PageSize="6">
+            <Columns>
+                <RadzenDataGridColumn TItem="DeviceTypeResponse" Property="Id" Title="Device Type ID">
+                    <Template Context="_Types">
+                        @_Types.Id
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="DeviceTypeResponse" TextAlign="TextAlign.Center" Property="Name" Title="Type Name" />
+                <RadzenDataGridColumn TItem="DeviceTypeResponse" TextAlign="TextAlign.Center" Property="Description" Title="Description" />
+                <RadzenDataGridColumn TItem="DeviceTypeResponse" Context="_Types" Title="Option" TextAlign="TextAlign.Center" Width="100px">
+                    <Template Context="_Types">
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Primary"
+                                      Variant="Variant.Flat"
+                                      Size="ButtonSize.Medium"
+                                      Click=@(arg => Edit(_Types.Id))>
+                        </RadzenButton>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
+
+
+@code {
+    public List<DeviceTypeResponse>? _Types;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await DeviceTypeService.GetDeviceTypes();
+        _Types = DeviceTypeService.DeviceTypes;
+    }
+
+    private void Edit(string Id)
+    {
+        NavigationManager.NavigateTo($"upd-del-type/{Id}");
+    }
+}

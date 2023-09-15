@@ -1,0 +1,84 @@
+﻿@page "/unassign/{Id}"
+@attribute [Authorize]
+@inject IDeviceLoanService DeviceLoanService
+@inject IDeviceService DeviceService
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+
+<PageTitle>Assign device</PageTitle>
+
+<div class="page-content">
+    <div class="form-content">
+        <h3 class="page-header">Unassign Device: <span class="device">@device.DeviceName</span> </h3>
+
+        <EditForm class="form-detail" Model="deviceLoans" OnSubmit="HandleSubmit">
+            <div class="flex-row content-detail">
+                Employee Name : @deviceLoans.EmployeeName
+                <br />
+                <span>Department: @device.Department </span>
+                <br />
+                 Device 
+                @if (String.IsNullOrEmpty(device.SerialNo))
+                {
+                    <span>IMEI Number: @device.IMEINo</span>
+                }
+                else
+                {
+                    <span>Serial Number: @device.SerialNo</span>
+                   
+                }       
+            </div>
+
+            <div class="text-center">
+                <button type="submit" class="btn btn-warning btn-shape mx-2 ">Unassign Device</button>
+                <button type="button" @onclick="Navigate" class="btn btn-primary btn-shape">Back to Home</button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+
+    [Parameter]
+    public string? Id { get; set; }
+    public string fullName = string.Empty;
+    private DeviceLoanResponse deviceLoans = new DeviceLoanResponse();
+    private DeviceResponse device = new DeviceResponse();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var loanedDevice = await DeviceLoanService.GetDeviceLoanById(Id);
+        var _devices = await DeviceService.GetDeviceById(Id);
+
+        if (_devices is not null && _devices.Data is not null) 
+            device = _devices.Data; 
+
+        if (loanedDevice is not null && loanedDevice.Data is not null)
+            deviceLoans = loanedDevice.Data;
+    }
+
+    private async void HandleSubmit()
+    {
+        if (Id != null)
+        {
+            var result = await DeviceLoanService.UnassignDevice(deviceLoans);
+            if (!result.Success)
+            {
+                ToastService.ShowError(result.Message, settings =>
+                  { settings.IconType = IconType.FontAwesome; settings.DisableTimeout = true; });
+            }
+            else
+            {
+                ToastService.ShowSuccess(result.Message, settings =>
+                   { settings.IconType = IconType.FontAwesome; });
+
+                Navigate();
+            }
+        }
+    }
+    private void Navigate()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+}
